@@ -1,0 +1,272 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Document</title>
+  <style>
+    @import url(https://fonts.googleapis.com/css?family=Khula:700);
+
+    body {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+      overflow: hidden;
+    }
+
+    .hidden {
+      opacity: 0;
+    }
+
+    .d-none {
+      display: none !important;
+    }
+
+    .console-container {
+      font-family: 'Times New Roman', Times, serif;
+      font-size: 2em;
+      text-align: center;
+      height: 200px;
+      width: 100%;
+      display: block;
+      position: absolute;
+      color: white;
+      margin: auto;
+      top: 0;
+      left: 50%;
+      z-index: 1000;
+      transform: translateX(-50%);
+      text-transform: capitalize;
+    }
+
+    .console-underscore {
+      display: inline-block;
+      position: relative;
+      top: -0.14em;
+      left: 10px;
+    }
+
+    #canvas {
+      display: block;
+      width: 100%;
+      height: 100%;
+      background: black;
+      position: relative;
+    }
+
+    #game {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+    }
+
+  </style>
+</head>
+
+<body>
+  <div id="heading" class='console-container'><span id='text'></span>
+    <div class='console-underscore' id='console'>&#95;</div>
+  </div>
+
+  <canvas id="canvas"></canvas>
+
+  <div id="game">
+    <iframe loading="lazy" id="MyGame" style="text-align: center;" title="game tieng nhat"
+      src="https://tuhoconline.net/hiraka/index.html" width="480" height="540" scrolling="no"
+      data-rocket-lazyload="fitvidscompatible" data-lazy-src="https://tuhoconline.net/hiraka/index.html"
+      data-ll-status="loaded" class="entered lazyloaded">H&#432;&#7899;ng d&#7851;n ch&#417;i :&nbsp;</iframe>
+  </div>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/dat-gui/0.5.1/dat.gui.min.js"></script>
+  <script>
+    var ctx = canvas.getContext('2d');
+
+    var settings = {
+      lineLength: 50,
+      speed: 1,
+      lifeTime: 3000,
+      maxParticles: 200,
+      radius: 6,
+      avoidVisited: true,
+      clearTrails: function () { ctx.clearRect(0, 0, width, height); visited = []; },
+      restart: function () { ctx.clearRect(0, 0, width, height); particles = []; visited = []; }
+    };
+    var visited = [];
+
+    function onResize() {
+      width = canvas.width = window.innerWidth;
+      height = canvas.height = window.innerHeight;
+    }
+    function rotate(vec, angle) {
+      angle = angle * Math.PI / 180;
+      return [(vec[0] * Math.cos(angle)) - (vec[1] * Math.sin(angle)), (vec[0] * Math.sin(angle)) + (vec[1] * Math.cos(angle))];
+    }
+    var dirVecs = [
+      [1, 0],
+      rotate([1, 0], 120),
+      rotate([1, 0], 240)
+    ];
+    var particles = [];
+
+    function isVisited(x, y) {
+      var pos = [Math.floor(x), Math.floor(y)];
+      for (var i = 0; i < visited.length; i++) {
+        if (visited[i][0] == pos[0] && visited[i][1] == pos[1]) {
+          return true;
+        }
+      }
+      return false;
+    }
+    function addToVisited(x, y) {
+      if (!isVisited(x, y)) {
+        var pos = [Math.floor(x), Math.floor(y)];
+        visited.push(pos);
+      }
+    }
+
+    function particle() {
+      this.x = 0;
+      this.y = 0;
+      this.age = 0;
+      this.dir = dirVecs[Math.floor(Math.random() * 3)];
+      this.color = 'hsl(' + ((Date.now() / 100.0) % 360.0) + ', 90%, light%)';
+    }
+    particle.prototype.updateAndDraw = function () {
+      this.age += 1;
+      if (this.age % settings.lineLength == 0) {
+        var dir1 = rotate(this.dir, 60);
+        var dir2 = rotate(this.dir, -60);
+
+        var options = [];
+
+        if (settings.avoidVisited) {
+          if (!isVisited(this.x + dir1[0] * settings.lineLength, this.y + dir1[1] * settings.lineLength)) {
+            options.push(dir1);
+          }
+          if (!isVisited(this.x + dir2[0] * settings.lineLength, this.y + dir2[1] * settings.lineLength)) {
+            options.push(dir2);
+          }
+          if (options.length == 0) {
+            options = [dir1, dir2];
+          }
+        } else {
+          options = [dir1, dir2];
+        }
+        this.dir = options[Math.floor(Math.random() * options.length)];
+
+        addToVisited(this.x, this.y);
+      }
+      ctx.fillStyle = this.color.replace('light', '70');
+      ctx.beginPath();
+      ctx.arc(width / 2.0 + this.x, height / 2.0 + this.y, settings.radius, 0, 6.3);
+
+      ctx.shadowBlur = settings.radius * 6;
+      ctx.shadowColor = this.color.replace('light', '30');
+      ctx.fill();
+
+      this.x += this.dir[0] * settings.speed;
+      this.y += this.dir[1] * settings.speed;
+    }
+
+    function updateAndDraw() {
+      ctx.shadowBlur = 0;
+      ctx.globalCompositeOperation = 'source-over';
+
+      ctx.fillStyle = 'rgba(0, 0, 0, 0.03)';
+      ctx.fillRect(0, 0, width, height);
+      ctx.globalCompositeOperation = 'lighter';
+
+      for (var i = particles.length - 1; i >= 0; i--) {
+        particles[i].updateAndDraw();
+        if (particles[i].age > settings.lifeTime) {
+          particles.splice(i, 1);
+        }
+      }
+      if (particles.length < settings.maxParticles) {
+        if (Math.random() > 0.9) {
+          particles.push(new particle());
+        }
+      } else if (particles.length > settings.maxParticles) {
+        particles.splice(0, settings.maxParticles);
+      }
+      requestAnimationFrame(updateAndDraw);
+    }
+    function init() {
+      onResize();
+
+      window.onresize = onResize;
+
+      updateAndDraw();
+    }
+
+    init();
+  </script>
+
+  <script>
+    setTimeout(function(){ 
+      var con1 = document.getElementById('heading');
+      con1.classList.add('d-none');
+    }, 39000);
+
+    consoleText(['Hello Mọi Người.', 'Mình là Mèo Coder', 'Học tiếng nhật khó quá', 'nên mình xả stress bằng cách làm ra game này', 'cho mọi người chơi stress chung cho zui.', 'ahihi' ], 'text')
+
+    
+    function consoleText(words, id, colors) {
+      if (colors === undefined) colors = ['#fff'];
+      var visible = true;
+      var con = document.getElementById('console');
+      var letterCount = 1;
+      var x = 1;
+      var waiting = false;
+      var target = document.getElementById(id)
+      target.setAttribute('style', 'color:' + colors[0])
+      window.setInterval(function () {
+
+        if (letterCount === 0 && waiting === false) {
+          waiting = true;
+          target.innerHTML = words[0].substring(0, letterCount)
+          window.setTimeout(function () {
+            var usedColor = colors.shift();
+            colors.push(usedColor);
+            var usedWord = words.shift();
+            words.push(usedWord);
+            x = 1;
+            target.setAttribute('style', 'color:' + colors[0])
+            letterCount += x;
+            waiting = false;
+          }, 500)
+        } else if (letterCount === words[0].length + 1 && waiting === false) {
+          waiting = true;
+          window.setTimeout(function () {
+            x = -1;
+            letterCount += x;
+            waiting = false;
+          }, 100)
+        } else if (waiting === false) {
+          target.innerHTML = words[0].substring(0, letterCount)
+          letterCount += x;
+        }
+      }, 120)
+      window.setInterval(function () {
+        if (visible === true) {
+          con.className = 'console-underscore hidden'
+          visible = false;
+
+        } else {
+          con.className = 'console-underscore'
+
+          visible = true;
+        }
+      }, 400)
+    }
+  </script>
+</body>
+
+</html>
